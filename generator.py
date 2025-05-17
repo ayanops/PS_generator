@@ -73,10 +73,6 @@ if st.button("Generate"):
     else:
         st.error("No valid order could be generated with the given conditions.")
 
-# --- Available tricks ---
-st.subheader("Example Tricks")
-st.write(trick_list[:10])
-
 # --- 出現頻度分析 ---
 st.subheader("Trick Frequency")
 
