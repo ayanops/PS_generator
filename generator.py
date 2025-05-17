@@ -33,6 +33,7 @@ text_model = TrickText(corpus_text, state_size=1)
 # --- UI：タイトル ---
 st.title("Penspinning Order Generator from Sangkm 13th")
 st.write("Generate a random pen spinning combo using Markov chain trained on Sangkm 13th.")
+st.video("https://www.youtube.com/watch?v=r4qq_tkwH1E")
 
 # --- Trick候補の取得 ---
 state_keys = list(text_model.chain.model.keys())
@@ -73,6 +74,32 @@ if st.button("Generate"):
     else:
         st.error("No valid order could be generated with the given conditions.")
 
+
+# --- 学習元オーダーの表示 ---
+st.subheader("Original Orders used for Training")
+
+order_labels = [
+    "KTH", "WhiteTiger", "Woojung", "Angmaramyon_a", "Uriel",
+    "Nagi", "Fresh-gel-_-v", "Nory", "Ferrari", "taeryong",
+    "syugen", "Morse", "Raply", "Sound", "Vision", "Flip",
+    "Xien", "Nanna", "Shahell", "chunhwang", "CloudTraveller",
+    "Biee", "Outsider", "Pashas"
+]
+
+# 行ごとに分割（空行を除外）
+corpus_lines = [line.strip() for line in corpus_text.strip().splitlines() if line.strip()]
+
+# ラベルと行数の整合性をチェック
+if len(order_labels) != len(corpus_lines):
+    st.error(f"ラベル数（{len(order_labels)}）とデータ行数（{len(corpus_lines)}）が一致していません。")
+else:
+    labeled_orders = pd.DataFrame({
+        "Spinner": order_labels,
+        "Trick Sequence": corpus_lines
+    })
+    st.dataframe(labeled_orders, use_container_width=True, width=0)
+
+
 # --- 出現頻度分析 ---
 st.subheader("Trick Frequency")
 
@@ -96,4 +123,3 @@ chart = alt.Chart(df).mark_bar().encode(
 )
 
 st.altair_chart(chart, use_container_width=True)
-
