@@ -36,7 +36,7 @@ st.write("Markov連鎖を使ってSangkm 13thからペン回しオーダーを�
 
 # 入力フォーム
 first = st.text_input("開始トリック (必須) / First trick (required)", value="Example: 34-23TwistedSonic", key="first_trick")
-last = st.text_input("最終トリック (任意) / Last trick（optional）", value="", key="last_trick")
+last = st.text_input("最終トリック (任意) / Last trick（optional）", value="Example: 122Sp", key="last_trick")
 length = st.slider("トリック最大数 / Maximum number of tricks", min_value=5, max_value=30, value=15)
 
 # --- 生成関数 ---
