@@ -8,6 +8,9 @@ import re
 import pandas as pd
 from collections import Counter
 import altair as alt
+from pyvis.network import Network
+import streamlit.components.v1 as components
+
 
 # --- テキスト読み込み ---
 @st.cache_data
@@ -165,3 +168,81 @@ html = f"""
 """
 
 components.html(html, height=520, scrolling=True)
+
+
+
+
+
+# --- ネットワークの可視化---
+st.subheader("Trick Transition Network (Filtered by Frequency)")
+
+# トリック出現回数カウント
+token_counts = Counter()
+for line in corpus_text.splitlines():
+    tricks = re.split(r"[ 　]+", line.strip())
+    token_counts.update(tricks)
+
+# 遷移ペアの出現回数カウント
+transition_counts = Counter()
+for line in corpus_text.splitlines():
+    tricks = re.split(r"[ 　]+", line.strip())
+    for i in range(len(tricks) - 1):
+        transition_counts[(tricks[i], tricks[i+1])] += 1
+
+# --- 出現回数でフィルタ ---
+min_count = st.slider("Minimum trick frequency to include in graph", min_value=1, max_value=20, value=3, step=1)
+
+# 有効トリック = 出現回数がmin_count以上のもの
+valid_tricks = {trick for trick, count in token_counts.items() if count >= min_count}
+
+# Pyvis グラフ作成
+net = Network(height="600px", width="100%", directed=True)
+added_nodes = set()
+
+for (a, b), count in transition_counts.items():
+    if a in valid_tricks and b in valid_tricks:
+        # ノード追加（出現回数に応じてサイズ指定）
+        for trick in (a, b):
+            if trick not in added_nodes:
+                size = token_counts[trick] * 2  # ノードサイズ調整
+                net.add_node(trick, label=trick, size=size)
+                added_nodes.add(trick)
+
+        # エッジ追加（遷移頻度に応じて太さ調整）
+        net.add_edge(a, b, value=count, title=f"{a} → {b}: {count}")
+
+# 保存して読み込む
+net.save_graph("filtered_trick_graph.html")
+with open("filtered_trick_graph.html", "r", encoding="utf-8") as f:
+    components.html(f.read(), height=620, scrolling=True)
+
+
+
+# --- 特定の trick に注目---
+focus_trick = st.selectbox("Select a Trick to Explore", options=sorted(set(tokens)))
+
+# 前後関係をカウント
+pair_counts = Counter()
+for line in corpus_text.splitlines():
+    tricks = re.split(r"[ 　]+", line.strip())
+    for i, t in enumerate(tricks):
+        if t == focus_trick:
+            if i > 0:
+                pair_counts[(tricks[i-1], t)] += 1
+            if i < len(tricks) - 1:
+                pair_counts[(t, tricks[i+1])] += 1
+
+# グラフ構築
+net = Network(height="500px", width="100%", directed=True)
+net.add_node(focus_trick, color="red")
+
+for (a, b), count in pair_counts.items():
+    net.add_node(a)
+    net.add_node(b)
+    net.add_edge(a, b, value=count, title=f"{a} → {b}: {count}")
+
+# 表示
+net.save_graph("trick_graph.html")
+HtmlFile = open("trick_graph.html", 'r', encoding='utf-8')
+components.html(HtmlFile.read(), height=550)
+
