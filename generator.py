@@ -26,8 +26,16 @@ class TrickText(markovify.Text):
     def word_join(self, words):
         return " ".join(words)
 
+
+# --- モード選択 ---
+st.sidebar.title("Language Mode")
+lang_mode = st.sidebar.radio("Choose language", options=["English", "日本語"], index=0)
+
+# --- テキストファイルの選択 ---
+file_path = "Sangkm13th_simplified.txt" if lang_mode == "English" else "Sangkm13th_japanese.txt"
+corpus_text = load_text(file_path)
+
 # --- モデル構築 ---
-corpus_text = load_text("Sangkm13th_simplified.txt")
 text_model = TrickText(corpus_text, state_size=1)
 
 # --- UI：タイトル ---
@@ -75,6 +83,27 @@ if st.button("Generate"):
         st.error("No valid order could be generated with the given conditions.")
 
 
+# --- 追加機能：ランダム生成ボタン ---
+st.markdown("---")
+st.subheader("Alternative Generation")
+
+# あなたが指定したい last trick 候補を定義
+preset_last_tricks = ["11Sp","12Sp","122Sp","1212Sp","121Sp","1211Sp","22Sp","222Sp",
+                      "2BackSA33","BackaroundFall","FLTA","NeoSA233","RayGun","Thumbaround"]
+
+# ボタン押下時にランダム生成
+if st.button("Generate (Random First & random finish trick)"):
+    random_first = random.choice(trick_list)
+    random_last = random.choice(preset_last_tricks)
+
+    order = generate_order(random_first, random_last, length)
+    if order:
+        st.success(f"Generated Order from **{random_first}** to **{random_last}**:")
+        st.write(order)
+    else:
+        st.error(f"No valid order could be generated from {random_first} to {random_last}.")
+
+
 # --- 学習元オーダーの表示 ---
 st.subheader("Original Orders used for Training")
 
@@ -100,26 +129,39 @@ else:
     st.dataframe(labeled_orders, use_container_width=True, width=0)
 
 
+import streamlit.components.v1 as components
+
 # --- 出現頻度分析 ---
 st.subheader("Trick Frequency")
 
-top_n = st.slider("Top N tricks to show", min_value=5, max_value=50, value=20, step=5)
+# ソート順
 sort_order = st.radio("Sort order", options=["High to Low", "Low to High"])
 
+# 頻度カウント
 tokens = []
 for line in corpus_text.splitlines():
     tokens.extend(re.split(r"[ 　]+", line.strip()))
 freq = Counter(tokens)
-
 df = pd.DataFrame(freq.items(), columns=["Trick", "Frequency"])
-ascending = True if sort_order == "Low to High" else False
-df = df.sort_values("Frequency", ascending=ascending).head(top_n)
 
+# ソート
+ascending = True if sort_order == "Low to High" else False
+df = df.sort_values("Frequency", ascending=ascending)
+
+# Altairグラフ（縦長でもOK）
 chart = alt.Chart(df).mark_bar().encode(
-    x=alt.X("Frequency:Q"),
-    y=alt.Y("Trick:N", sort=None)
+    x=alt.X("Frequency:Q", title="Frequency"),
+    y=alt.Y("Trick:N", sort=None, title="Trick")
 ).properties(
-    height=alt.Step(20)
+    height=20 * len(df),  # 全トリック分の高さで生成
+    width='container'
 )
 
-st.altair_chart(chart, use_container_width=True)
+# HTMLに変換してスクロール付きdivに埋め込み
+html = f"""
+<div style="height:500px; overflow-y:auto; border:1px solid #ccc; padding:10px">
+  {chart.to_html()}
+</div>
+"""
+
+components.html(html, height=520, scrolling=True)
