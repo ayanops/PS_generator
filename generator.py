@@ -31,8 +31,7 @@ class TrickText(markovify.Text):
 
 
 # --- モード選択 ---
-st.sidebar.title("Language Mode")
-lang_mode = st.sidebar.radio("Choose language", options=["English", "日本語"], index=0)
+lang_mode = st.sidebar.radio("Choose language", options=["日本語","English"], index=0)
 
 # --- テキストファイルの選択 ---
 file_path = "Sangkm13th_simplified.txt" if lang_mode == "English" else "Sangkm13th_japanese.txt"
@@ -42,8 +41,9 @@ corpus_text = load_text(file_path)
 text_model = TrickText(corpus_text, state_size=1)
 
 # --- UI：タイトル ---
-st.title("Penspinning Order Generator from Sangkm 13th")
-st.write("Generate a random pen spinning combo using Markov chain trained on Sangkm 13th.")
+desc = "Generate a random pen spinning combo using Markov chain trained on Sangkm 13th." if lang_mode == "English" else "Sangkm 13thからマルコフ連鎖を用いて学習したペン回しオーダーを生成します。"
+st.title("Penspinning Combo Generator from Sangkm 13th")
+st.write(desc)
 st.video("https://www.youtube.com/watch?v=r4qq_tkwH1E")
 
 # --- Trick候補の取得 ---
@@ -51,11 +51,14 @@ state_keys = list(text_model.chain.model.keys())
 trick_list = sorted(set("".join(k) for k in state_keys))
 
 # --- First / Last Trick Selection ---
-first = st.selectbox("First trick", options=[""] + trick_list, index=0)
-last = st.selectbox("Last trick", options=[""] + trick_list, index=0)
+first_label = "First trick" if lang_mode == "English" else "開始トリック"
+last_label = "Last trick" if lang_mode == "English" else "終了トリック"
+first = st.selectbox(first_label, options=[""] + trick_list, index=0)
+last = st.selectbox(last_label, options=[""] + trick_list, index=0)
 
 # --- 長さの選択 ---
-length = st.slider("Maximum number of tricks", min_value=5, max_value=30, value=15)
+length_label = "Maximum number of tricks" if lang_mode == "English" else "最大トリック数"
+length = st.slider(length_label, min_value=5, max_value=30, value=15)
 
 # --- 生成関数 ---
 def generate_order(first_word, last_word="", n=15, max_attempts=200):
@@ -86,28 +89,32 @@ if st.button("Generate"):
         st.error("No valid order could be generated with the given conditions.")
 
 
-# --- 追加機能：ランダム生成ボタン ---
-st.markdown("---")
-st.subheader("Alternative Generation")
+# --- ランダム生成ボタン ---
 
-# あなたが指定したい last trick 候補を定義
+# last trick 候補を定義
 preset_last_tricks = ["11Sp","12Sp","122Sp","1212Sp","121Sp","1211Sp","22Sp","222Sp",
                       "2BackSA33","BackaroundFall","FLTA","NeoSA233","RayGun","Thumbaround"]
 
 # ボタン押下時にランダム生成
-if st.button("Generate (Random First & random finish trick)"):
+alt_title = "Alternative Generation" if lang_mode == "English" else "ランダム生成"
+random_button = "Generate (Random First & random finish trick)" if lang_mode == "English" else "ランダム生成（ランダム開始・締めトリックまで）"
+st.markdown("---")
+st.subheader(alt_title)
+if st.button(random_button):
     random_first = random.choice(trick_list)
     random_last = random.choice(preset_last_tricks)
-
     order = generate_order(random_first, random_last, length)
     if order:
-        st.success(f"Generated Order from **{random_first}** to **{random_last}**:")
+        msg = f"Generated Order from **{random_first}** to **{random_last}**:" if lang_mode == "English" else f"**{random_first}** から **{random_last}** までの生成コンボ："
+        st.success(msg)
         st.write(order)
     else:
-        st.error(f"No valid order could be generated from {random_first} to {random_last}.")
+        msg = f"No valid order could be generated from {random_first} to {random_last}." if lang_mode == "English" else f"{random_first} から {random_last} の間では有効なコンボを生成できませんでした。"
+        st.error(msg)
 
 
 # --- 学習元オーダーの表示 ---
+corpus_header = "Original Orders used for Training" if lang_mode == "English" else "学習に使用されたオーダー一覧"
 st.subheader("Original Orders used for Training")
 
 order_labels = [
@@ -134,7 +141,9 @@ else:
 
 import streamlit.components.v1 as components
 
+
 # --- 出現頻度分析 ---
+freq_header = "Trick Frequency" if lang_mode == "English" else "トリック出現頻度"
 st.subheader("Trick Frequency")
 
 # ソート順
@@ -171,10 +180,9 @@ components.html(html, height=520, scrolling=True)
 
 
 
-
-
 # --- ネットワークの可視化---
-st.subheader("Trick Transition Network (Filtered by Frequency)")
+net_header = "Trick Transition Network (Filtered by Frequency)" if lang_mode == "English" else "トリック遷移ネットワーク（頻度でフィルター）"
+st.subheader(net_header)
 
 # トリック出現回数カウント
 token_counts = Counter()
@@ -190,7 +198,8 @@ for line in corpus_text.splitlines():
         transition_counts[(tricks[i], tricks[i+1])] += 1
 
 # --- 出現回数でフィルタ ---
-min_count = st.slider("Minimum trick frequency to include in graph", min_value=1, max_value=20, value=3, step=1)
+min_count_label = "Minimum trick frequency to include in graph" if lang_mode == "English" else "グラフに含める最小出現回数"
+min_count = st.slider(min_count_label, min_value=1, max_value=20, value=3, step=1)
 
 # 有効トリック = 出現回数がmin_count以上のもの
 valid_tricks = {trick for trick, count in token_counts.items() if count >= min_count}
@@ -204,7 +213,7 @@ for (a, b), count in transition_counts.items():
         # ノード追加（出現回数に応じてサイズ指定）
         for trick in (a, b):
             if trick not in added_nodes:
-                size = token_counts[trick] * 2  # ノードサイズ調整
+                size = token_counts[trick] * 1.5  # ノードサイズ調整
                 net.add_node(trick, label=trick, size=size)
                 added_nodes.add(trick)
 
@@ -219,7 +228,9 @@ with open("filtered_trick_graph.html", "r", encoding="utf-8") as f:
 
 
 # --- 特定の trick に注目---
-focus_trick = st.selectbox("Select a Trick to Explore", options=sorted(set(tokens)))
+st.subheader("Trick Relationship Explorer" if lang_mode == "English" else "トリックごとの探索")
+focus_header = "Select a Trick to Explore" if lang_mode == "English" else "トリックを選択"
+focus_trick = st.selectbox(focus_header, options=sorted(set(tokens)))
 
 # 前後関係をカウント
 pair_counts = Counter()
@@ -245,4 +256,5 @@ for (a, b), count in pair_counts.items():
 net.save_graph("trick_graph.html")
 HtmlFile = open("trick_graph.html", 'r', encoding='utf-8')
 components.html(HtmlFile.read(), height=550)
+
 
