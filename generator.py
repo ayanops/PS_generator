@@ -30,8 +30,20 @@ class TrickText(markovify.Text):
         return " ".join(words)
 
 
-# --- モード選択 ---
+# --- slidebarレイアウト作成、モード選択 ---
 lang_mode = st.sidebar.radio("Choose language", options=["日本語","English"], index=0)
+
+with st.sidebar:
+    st.markdown("## Information")
+    st.markdown("""
+    Version: 1.0.0  
+    Last update: May 2025  
+    [GitHub Repository](https://github.com/ayanops/PS_generator)  
+      
+    Creater: ayaNo  
+    Contact: [X](https://x.com/ayanops), [Youtube](https://www.youtube.com/channel/UCeuUf2nRyGRir2mtmn9By6g?app=desktop)
+    """)
+
 
 # --- テキストファイルの選択 ---
 file_path = "Sangkm13th_simplified.txt" if lang_mode == "English" else "Sangkm13th_japanese.txt"
@@ -78,7 +90,8 @@ def generate_order(first_word, last_word="", n=15, max_attempts=200):
     return None
 
 # --- ボタンが押されたら生成 ---
-if st.button("Generate"):
+generate_button = "Generate" if lang_mode == "English" else "生成"
+if st.button(generate_button):
     if first and first not in trick_list:
         st.warning(f"The selected first trick '{first}' is not in the model.")
     order = generate_order(first, last, length)
@@ -96,10 +109,8 @@ preset_last_tricks = ["11Sp","12Sp","122Sp","1212Sp","121Sp","1211Sp","22Sp","22
                       "2BackSA33","BackaroundFall","FLTA","NeoSA233","RayGun","Thumbaround"]
 
 # ボタン押下時にランダム生成
-alt_title = "Alternative Generation" if lang_mode == "English" else "ランダム生成"
-random_button = "Generate (Random First & random finish trick)" if lang_mode == "English" else "ランダム生成（ランダム開始・締めトリックまで）"
+random_button = "Generate random combo (finish with spread or around)" if lang_mode == "English" else "ランダム生成 (スプレッドかアラウンドで締め)"
 st.markdown("---")
-st.subheader(alt_title)
 if st.button(random_button):
     random_first = random.choice(trick_list)
     random_last = random.choice(preset_last_tricks)
@@ -114,8 +125,8 @@ if st.button(random_button):
 
 
 # --- 学習元オーダーの表示 ---
-corpus_header = "Original Orders used for Training" if lang_mode == "English" else "学習に使用されたオーダー一覧"
-st.subheader("Original Orders used for Training")
+corpus_header = "Original Combos used for Training" if lang_mode == "English" else "学習元オーダー"
+st.subheader(corpus_header)
 
 order_labels = [
     "KTH", "WhiteTiger", "Woojung", "Angmaramyon_a", "Uriel",
@@ -144,7 +155,7 @@ import streamlit.components.v1 as components
 
 # --- 出現頻度分析 ---
 freq_header = "Trick Frequency" if lang_mode == "English" else "トリック出現頻度"
-st.subheader("Trick Frequency")
+st.subheader(freq_header)
 
 # ソート順
 sort_order = st.radio("Sort order", options=["High to Low", "Low to High"])
@@ -181,7 +192,7 @@ components.html(html, height=520, scrolling=True)
 
 
 # --- ネットワークの可視化---
-net_header = "Trick Transition Network (Filtered by Frequency)" if lang_mode == "English" else "トリック遷移ネットワーク（頻度でフィルター）"
+net_header = "Trick Transition Network" if lang_mode == "English" else "トリック遷移ネットワーク"
 st.subheader(net_header)
 
 # トリック出現回数カウント
@@ -232,29 +243,38 @@ st.subheader("Trick Relationship Explorer" if lang_mode == "English" else "ト�
 focus_header = "Select a Trick to Explore" if lang_mode == "English" else "トリックを選択"
 focus_trick = st.selectbox(focus_header, options=sorted(set(tokens)))
 
-# 前後関係をカウント
+# 前後関係 + 出現頻度の取得
 pair_counts = Counter()
+neighbor_counts = Counter()
+
 for line in corpus_text.splitlines():
     tricks = re.split(r"[ 　]+", line.strip())
     for i, t in enumerate(tricks):
         if t == focus_trick:
             if i > 0:
-                pair_counts[(tricks[i-1], t)] += 1
+                prev = tricks[i - 1]
+                pair_counts[(prev, t)] += 1
+                neighbor_counts[prev] += 1
             if i < len(tricks) - 1:
-                pair_counts[(t, tricks[i+1])] += 1
+                nxt = tricks[i + 1]
+                pair_counts[(t, nxt)] += 1
+                neighbor_counts[nxt] += 1
 
-# グラフ構築
+# --- グラフ構築 ---
 net = Network(height="500px", width="100%", directed=True)
-net.add_node(focus_trick, color="red")
+net.add_node(focus_trick, color="#FF6347", size=20)
 
+# ノード追加（前後トリック）
+for node, freq in neighbor_counts.items():
+    size = 10 + freq * 2
+    color = "#1f77b4" if (node, focus_trick) in pair_counts else "#2ca02c"  # 前:青 / 後:緑
+    net.add_node(node, label=node, size=size, color=color)
+
+# エッジ追加
 for (a, b), count in pair_counts.items():
-    net.add_node(a)
-    net.add_node(b)
-    net.add_edge(a, b, value=count, title=f"{a} → {b}: {count}")
+    net.add_edge(a, b, title=f"{a} → {b}: {count} times")
 
-# 表示
+# --- 表示 ---
 net.save_graph("trick_graph.html")
-HtmlFile = open("trick_graph.html", 'r', encoding='utf-8')
-components.html(HtmlFile.read(), height=550)
-
-
+with open("trick_graph.html", "r", encoding="utf-8") as HtmlFile:
+    components.html(HtmlFile.read(), height=550)
