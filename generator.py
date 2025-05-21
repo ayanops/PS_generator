@@ -96,17 +96,21 @@ if st.button(generate_button):
         st.warning(f"The selected first trick '{first}' is not in the model.")
     order = generate_order(first, last, length)
     if order:
-        st.success("Generated Order:")
+        msg = f"Generated Order from **{first}** to **{last}**:" if lang_mode == "English" else f"**{first}** から **{last}** までの生成コンボ："
+        st.success(msg)
         st.write(order)
     else:
-        st.error("No valid order could be generated with the given conditions.")
-
+        msg = f"No valid order could be generated from {first} to {last}." if lang_mode == "English" else f"{first} から {last} の間では有効なコンボを生成できませんでした。"
+        st.error(msg)
 
 # --- ランダム生成ボタン ---
 
 # last trick 候補を定義
-preset_last_tricks = ["11Sp","12Sp","122Sp","1212Sp","121Sp","1211Sp","22Sp","222Sp",
+preset_last_tricks = (["11Sp","12Sp","122Sp","1212Sp","121Sp","1211Sp","22Sp","222Sp",
                       "2BackSA33","BackaroundFall","FLTA","NeoSA233","RayGun","Thumbaround"]
+                      if lang_mode == "English" 
+                      else ["11スプレッド","12スプレッド","122スプレッド","1212スプレッド","121スプレッド","1211スプレッド","22スプレッド","222スプレッド",
+                      "2バクSA33","シャフィーボ","FLTA","NeoSA233","レイガン","ノーマル"])
 
 # ボタン押下時にランダム生成
 random_button = "Generate random combo (finish with spread or around)" if lang_mode == "English" else "ランダム生成 (スプレッドかアラウンドで締め)"
@@ -148,9 +152,6 @@ else:
         "Trick Sequence": corpus_lines
     })
     st.dataframe(labeled_orders, use_container_width=True, width=0)
-
-
-import streamlit.components.v1 as components
 
 
 # --- 出現頻度分析 ---
