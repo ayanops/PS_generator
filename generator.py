@@ -279,3 +279,32 @@ for (a, b), count in pair_counts.items():
 net.save_graph("trick_graph.html")
 with open("trick_graph.html", "r", encoding="utf-8") as HtmlFile:
     components.html(HtmlFile.read(), height=550)
+
+
+# --- 出現行の逆引き ---
+st.markdown("#### Spinner")
+lines_with_focus = []
+
+# 出現行のリスト作成
+html_lines = []
+for idx, line in enumerate(corpus_text.splitlines()):
+    label = order_labels[idx]
+    if focus_trick in line:
+        pattern = re.escape(focus_trick)
+        highlighted = re.sub(
+            pattern,
+            f"<span style='color:red; font-weight:bold'>{focus_trick}</span>",
+            line
+        )
+        html_lines.append(f"<b>{label}</b>: {highlighted}")
+
+if html_lines:
+    full_html = """
+    <div style='max-height: 300px; overflow-y: auto; padding: 10px;
+                border: 1px solid #ddd; border-radius: 6px;
+                background-color: #f9f9f9; font-family: monospace;'>
+    """ + "<br>".join(html_lines) + "</div>"
+
+    st.markdown(full_html, unsafe_allow_html=True)
+else:
+    st.info("このトリックはどの行にも含まれていません。")
