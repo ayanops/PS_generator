@@ -73,7 +73,7 @@ length_label = "Maximum number of tricks" if lang_mode == "English" else "最大
 length = st.slider(length_label, min_value=5, max_value=30, value=15)
 
 # --- 生成関数 ---
-def generate_order(first_word, last_word="", n=15, max_attempts=200):
+def generate_order(first_word, last_word="", n=15, max_attempts=500):
     state_keys = list(text_model.chain.model.keys())
     str_keys = ["".join(k) for k in state_keys]
 
@@ -126,11 +126,13 @@ if st.button(random_button):
     else:
         msg = f"No valid order could be generated from {random_first} to {random_last}." if lang_mode == "English" else f"{random_first} から {random_last} の間では有効なコンボを生成できませんでした。"
         st.error(msg)
+st.markdown("---")
+
 
 
 # --- 学習元オーダーの表示 ---
-corpus_header = "Original Combos used for Training" if lang_mode == "English" else "学習元オーダー"
-st.subheader(corpus_header)
+st.markdown("### Original data used for Training" if lang_mode == "English" else "### 学習データ")
+st.markdown("#### Combos" if lang_mode == "English" else "#### フリースタイル")
 
 order_labels = [
     "KTH", "WhiteTiger", "Woojung", "Angmaramyon_a", "Uriel",
@@ -155,92 +157,98 @@ else:
 
 
 # --- 出現頻度分析 ---
-freq_header = "Trick Frequency" if lang_mode == "English" else "トリック出現頻度"
-st.subheader(freq_header)
+st.markdown("#### Trick Frequency" if lang_mode == "English" else "#### トリック出現数")
 
-# ソート順
-sort_order = st.radio("Sort order", options=["High to Low", "Low to High"])
 
-# 頻度カウント
+# 先に tokens を準備（表示の有無に関係なく）
 tokens = []
 for line in corpus_text.splitlines():
     tokens.extend(re.split(r"[ 　]+", line.strip()))
 freq = Counter(tokens)
 df = pd.DataFrame(freq.items(), columns=["Trick", "Frequency"])
 
-# ソート
-ascending = True if sort_order == "Low to High" else False
-df = df.sort_values("Frequency", ascending=ascending)
+# 表示するかどうかのチェックボックス
+freq_check = "Show Frequency" if lang_mode == "English" else "表示"
+show_freq = st.checkbox(freq_check, value=False)
 
-# Altairグラフ（縦長でもOK）
-chart = alt.Chart(df).mark_bar().encode(
-    x=alt.X("Frequency:Q", title="Frequency"),
-    y=alt.Y("Trick:N", sort=None, title="Trick")
-).properties(
-    height=20 * len(df),  # 全トリック分の高さで生成
-    width='container'
-)
+if show_freq:
+    # 高頻度順にソート
+    df = df.sort_values("Frequency", ascending=False)
 
-# HTMLに変換してスクロール付きdivに埋め込み
-html = f"""
-<div style="height:500px; overflow-y:auto; border:1px solid #ccc; padding:10px">
-  {chart.to_html()}
-</div>
-"""
+    # Altairグラフ
+    chart = alt.Chart(df).mark_bar().encode(
+        x=alt.X("Frequency:Q", title="Frequency"),
+        y=alt.Y("Trick:N", sort=None, title="Trick")
+    ).properties(
+        height=20 * len(df),
+        width='container'
+    )
 
-components.html(html, height=520, scrolling=True)
+    # HTMLに変換してスクロール付きdivに埋め込み
+    html = f"""
+    <div style="height:500px; overflow-y:auto; border:1px solid #ccc; padding:10px">
+      {chart.to_html()}
+    </div>
+    """
+
+    components.html(html, height=520, scrolling=True)
+st.markdown("---")
 
 
 
-# --- ネットワークの可視化---
-net_header = "Trick Transition Network" if lang_mode == "English" else "トリック遷移ネットワーク"
+# --- ネットワークの可視化 ---
+net_header = "Network analysis" if lang_mode == "English" else "ネットワーク分析"
 st.subheader(net_header)
 
-# トリック出現回数カウント
-token_counts = Counter()
-for line in corpus_text.splitlines():
-    tricks = re.split(r"[ 　]+", line.strip())
-    token_counts.update(tricks)
+# ネットワークを表示するかどうか
+show_check = "Show full network" if lang_mode == "English" else "全体のネットワークを表示"
+show_network = st.checkbox(show_check, value=False)
 
-# 遷移ペアの出現回数カウント
-transition_counts = Counter()
-for line in corpus_text.splitlines():
-    tricks = re.split(r"[ 　]+", line.strip())
-    for i in range(len(tricks) - 1):
-        transition_counts[(tricks[i], tricks[i+1])] += 1
+if show_network:
+    # トリック出現回数カウント
+    token_counts = Counter()
+    for line in corpus_text.splitlines():
+        tricks = re.split(r"[ 　]+", line.strip())
+        token_counts.update(tricks)
 
-# --- 出現回数でフィルタ ---
-min_count_label = "Minimum trick frequency to include in graph" if lang_mode == "English" else "グラフに含める最小出現回数"
-min_count = st.slider(min_count_label, min_value=1, max_value=20, value=3, step=1)
+    # 遷移ペアの出現回数カウント
+    transition_counts = Counter()
+    for line in corpus_text.splitlines():
+        tricks = re.split(r"[ 　]+", line.strip())
+        for i in range(len(tricks) - 1):
+            transition_counts[(tricks[i], tricks[i+1])] += 1
 
-# 有効トリック = 出現回数がmin_count以上のもの
-valid_tricks = {trick for trick, count in token_counts.items() if count >= min_count}
+    # --- 出現回数でフィルタ ---
+    min_count_label = "Minimum trick frequency" if lang_mode == "English" else "最小出現回数"
+    min_count = st.slider(min_count_label, min_value=1, max_value=20, value=3, step=1)
 
-# Pyvis グラフ作成
-net = Network(height="600px", width="100%", directed=True)
-added_nodes = set()
+    # 有効トリック = 出現回数がmin_count以上のもの
+    valid_tricks = {trick for trick, count in token_counts.items() if count >= min_count}
 
-for (a, b), count in transition_counts.items():
-    if a in valid_tricks and b in valid_tricks:
-        # ノード追加（出現回数に応じてサイズ指定）
-        for trick in (a, b):
-            if trick not in added_nodes:
-                size = token_counts[trick] * 1.5  # ノードサイズ調整
-                net.add_node(trick, label=trick, size=size)
-                added_nodes.add(trick)
+    # Pyvis グラフ作成
+    net = Network(height="600px", width="100%", directed=True)
+    added_nodes = set()
 
-        # エッジ追加（遷移頻度に応じて太さ調整）
-        net.add_edge(a, b, value=count, title=f"{a} → {b}: {count}")
+    for (a, b), count in transition_counts.items():
+        if a in valid_tricks and b in valid_tricks:
+            # ノード追加（出現回数に応じてサイズ指定）
+            for trick in (a, b):
+                if trick not in added_nodes:
+                    size = token_counts[trick] * 1.5  # ノードサイズ調整
+                    net.add_node(trick, label=trick, size=size)
+                    added_nodes.add(trick)
 
-# 保存して読み込む
-net.save_graph("filtered_trick_graph.html")
-with open("filtered_trick_graph.html", "r", encoding="utf-8") as f:
-    components.html(f.read(), height=620, scrolling=True)
+            # エッジ追加（遷移頻度に応じて太さ調整）
+            net.add_edge(a, b, value=count, title=f"{a} → {b}: {count}")
 
+    # 保存して読み込む
+    net.save_graph("filtered_trick_graph.html")
+    with open("filtered_trick_graph.html", "r", encoding="utf-8") as f:
+        components.html(f.read(), height=620, scrolling=True)
 
 
 # --- 特定の trick に注目---
-st.subheader("Trick Relationship Explorer" if lang_mode == "English" else "トリックごとの探索")
+st.markdown("#### Explore by Trick" if lang_mode == "English" else "#### トリック別分析")
 focus_header = "Select a Trick to Explore" if lang_mode == "English" else "トリックを選択"
 focus_trick = st.selectbox(focus_header, options=sorted(set(tokens)))
 
