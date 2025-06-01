@@ -110,7 +110,7 @@ preset_last_tricks = (["11Sp","12Sp","122Sp","1212Sp","121Sp","1211Sp","22Sp","2
                       "2BackSA33","BackaroundFall","FLTA","NeoSA233","RayGun","Thumbaround"]
                       if lang_mode == "English" 
                       else ["11スプレッド","12スプレッド","122スプレッド","1212スプレッド","121スプレッド","1211スプレッド","22スプレッド","222スプレッド",
-                      "2バクSA33","シャフィーボ","FLTA","NeoSA233","レイガン","ノーマル"])
+                      "2バクSA33","シャフィーボ","フィンガーレスノーマル","NeoSA233","レイガン","ノーマル"])
 
 # ボタン押下時にランダム生成
 random_button = "Generate random combo (finish with spread or around)" if lang_mode == "English" else "ランダム生成 (スプレッドかアラウンドで締め)"
