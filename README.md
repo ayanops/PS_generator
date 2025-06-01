@@ -9,5 +9,5 @@ Special thanks to Beige for reviewing the annotations for the combos, and to Cha
 
 This source is freely available for use, provided that appropriate citation is given.
 
-ayaNo in JEB, May 2025  
+ayaNo in JEB, June 2025  
 https://www.youtube.com/@ayanops6192
