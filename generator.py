@@ -54,7 +54,7 @@ text_model = TrickText(corpus_text, state_size=1)
 
 # --- UI：タイトル ---
 desc = "Generate a random pen spinning combo using Markov chain trained on Sangkm 13th." if lang_mode == "English" else "Sangkm 13thからマルコフ連鎖を用いて学習したペン回しオーダーを生成します。"
-st.title("Penspinning Combo Generator from Sangkm 13th")
+st.title("Penspinning Combo Generator")
 st.write(desc)
 st.video("https://www.youtube.com/watch?v=r4qq_tkwH1E")
 
@@ -142,6 +142,9 @@ order_labels = [
     "Biee", "Outsider", "Pashas"
 ]
 
+FS_check = "Show" if lang_mode == "English" else "表示"
+show_FS = st.checkbox(FS_check, value=False, key="show_FS_checkbox")
+
 # 行ごとに分割（空行を除外）
 corpus_lines = [line.strip() for line in corpus_text.strip().splitlines() if line.strip()]
 
@@ -153,12 +156,14 @@ else:
         "Spinner": order_labels,
         "Trick Sequence": corpus_lines
     })
-    st.dataframe(labeled_orders, use_container_width=True, width=0)
+
+    # チェックボックスがオンの場合のみ表示
+    if show_FS:
+        st.dataframe(labeled_orders, use_container_width=True, width=0)
 
 
 # --- 出現頻度分析 ---
 st.markdown("#### Trick Frequency" if lang_mode == "English" else "#### トリック出現数")
-
 
 # 先に tokens を準備（表示の有無に関係なく）
 tokens = []
@@ -168,8 +173,8 @@ freq = Counter(tokens)
 df = pd.DataFrame(freq.items(), columns=["Trick", "Frequency"])
 
 # 表示するかどうかのチェックボックス
-freq_check = "Show Frequency" if lang_mode == "English" else "表示"
-show_freq = st.checkbox(freq_check, value=False)
+freq_check = "Show" if lang_mode == "English" else "表示"
+show_freq = st.checkbox(freq_check, value=False, key="show_freq_checkbox")
 
 if show_freq:
     # 高頻度順にソート
